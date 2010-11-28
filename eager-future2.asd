@@ -1,10 +1,10 @@
-(asdf:defsystem :eager-future
+(asdf:defsystem :eager-future2
   :name "eager-future2"
   :author "Vladimir Sedach <vsedach@gmail.com>"
   :license "LLGPLv3"
   :serial t
   :components ((:file "package")
                (:file "scheduler")
-               (:file "future")
-               )
+               (:file "make-future")
+               (:file "future"))
   :depends-on (:bordeaux-threads :trivial-garbage))

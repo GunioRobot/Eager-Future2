@@ -6,14 +6,15 @@
    (lock :reader lock :initform (make-lock "future lock"))
    (computing-thread :accessor computing-thread :initform nil)
    (wait-list :accessor wait-list :initform ())
-   (interrupt-tag :reader interrupt-tag :initarg :interrupt-tag)))
+   (future-id :reader future-id :initarg :future-id)))
+
+(defun make-future (task future-id)
+  (make-instance 'future :task task :future-id future-id))
 
 (defun ready-to-yield? (future)
   "Returns t if the future values have been computed, nil otherwise."
   (with-lock-held ((lock future))
     (slot-boundp future 'values)))
-
-(defvar %computing-future nil) ;; protocol for random pool threads
 
 (defun force (future &rest values)
   "If the future has not yet yielded a value, installs the given
@@ -27,12 +28,8 @@ computation of the future)."
     (with-lock-held ((car x))
       (condition-notify (cdr x))))
   (with-slots (computing-thread) future
-    (when (and (not (eq computing-thread (current-thread))) (thread-alive-p computing-thread))
-      (ignore-errors ;; should probably log them or something
-        (interrupt-thread computing-thread
-                          (lambda ()
-                            (when (eq %computing-future (interrupt-tag future))
-                              (throw 'task-done nil))))))
+    (unless (eq computing-thread (current-thread))
+      (abort-scheduled-future-task computing-thread (future-id future)))
     (setf computing-thread nil
           (wait-list future) nil
           (task future) nil)))
@@ -51,7 +48,7 @@ computation of the future)."
               (setf any-computing? t))
             (push (cons select-lock notifier) (wait-list future))))
         (unless any-computing?
-          (schedule-future (first futures))))
+          (schedule-future (first futures) :speculative)))
       (loop (dolist (future futures)
               (with-lock-held ((lock future))
                 (when (slot-boundp future 'values)
@@ -80,12 +77,4 @@ In case of an eager future, blocks until the value is available."
                       (go compute)))))
      select (select future) (go done)
      compute (multiple-value-call #'force future (funcall (task future)))
-     done (values-list (%values future))))
-
-;;; implementations
-
-;;; ask for a delayed future - get a future right back
-;;; ask for an eager future - schedule a future to run immediately and give you the future object
-;;; ask for a speculative future - put future on work queue and return the future
-
-
+     done (return-from yield (values-list (%values future)))))

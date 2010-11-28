@@ -5,8 +5,9 @@ unless otherwise noted.
 
 This library is free software; you can redistribute it and/or modify
 it under the terms of the Lisp Lesser General Public License version
-3, which consists of the GNU Lesser General Public License version 3
-as published by the Free Software Foundation and the Franz preamble.
+3, which consists of the GNU Lesser General Public License, either
+version 3 or (at your option) any later version, as published by the
+Free Software Foundation, and the Franz preamble.
 
 This library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of

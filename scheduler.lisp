@@ -26,13 +26,20 @@
    :name "Eager Future2 Worker")
   (with-lock-held (*thread-counter-lock*) (incf *total-threads*)))
 
+(defun thread-pool-size ()
+  (with-lock-held (*thread-counter-lock*)
+    *total-threads*))
+
 (defun advise-thread-pool-size (new-size)
   (with-lock-held (*thread-counter-lock*)
     (if (< *total-threads* new-size)
         (loop repeat (- new-size *total-threads*) do (make-pool-thread))
         (with-lock-held (*thread-pool-lock*)
           (loop repeat (- *total-threads* new-size) do
-               (push (lambda () (throw 'die)) *waiting-tasks*))))))
+               (push (lambda () (throw 'die nil)) *waiting-tasks*))))))
+
+(eval-when (:load-toplevel)
+  (advise-thread-pool-size 10))
 
 (defun schedule-last (task)
   (with-lock-held (*thread-pool-lock*)
