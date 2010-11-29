@@ -5,16 +5,19 @@
    ;; making futures
    #:*default-future-type*
    #:pcall
-   #:pexec
-   #:plet
 
    ;; dealing with futures
    #:ready-to-yield?
    #:yield
    #:select
    #:force
+   #:force-values ;; restart
 
    ;; thread pool management
    #:thread-pool-size
    #:advise-thread-pool-size
+
+   ;; helper functions
+   #:pexec
+   #:plet
    ))

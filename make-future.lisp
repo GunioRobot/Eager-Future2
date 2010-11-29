@@ -22,13 +22,25 @@ If lazy, newly created futures are not computed until asked to yield their value
       (flet ((get-future () (or (weak-pointer-value future-ptr) (throw 'task-done nil))))
         (let ((*computing-future* (future-id (get-future))))
           (with-lock-held ((lock (get-future)))
-            (if (slot-boundp (get-future) 'values)
+            (if (%ready-to-yield? (get-future))
                 (throw 'task-done nil)
                 (setf (computing-thread (get-future)) (current-thread))))
           (finalize (get-future) (let ((thread (current-thread))
                                        (future-id *computing-future*))
                                    (lambda () (abort-scheduled-future-task thread future-id))))
-          (let ((values (multiple-value-list (funcall (task (get-future))))))
+          (let ((values
+                 (let ((*debugger-hook*
+                        (lambda (c old-hook)
+                          (declare (ignore old-hook))
+                          (with-lock-held ((lock (get-future)))
+                            (setf (restart-notifier (get-future)) (make-condition-variable :name "Eager Future2 restart proxy CV")
+                                  (error-descriptor (get-future)) (cons c (compute-restarts c)))
+                            (loop (condition-wait (restart-notifier (get-future)) (lock (get-future)))
+                               (let ((proxy-restart (proxy-restart (get-future))))
+                                 (when proxy-restart
+                                   (apply #'invoke-restart (car proxy-restart) (cdr proxy-restart)))))))))
+                   (restart-case (multiple-value-list (funcall (task (get-future))))
+                     (force-values (&rest values) values)))))
             (apply #'force (get-future) values)))))))
 
 (defun schedule-future (future future-type)

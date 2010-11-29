@@ -13,15 +13,18 @@
    (lambda ()
      (unwind-protect
           (catch 'die
-            (loop (with-lock-held (*thread-pool-lock*)
-                    (incf *free-threads*)
-                    (ignore-errors
-                      (funcall (loop (let ((task (pop *waiting-tasks*)))
-                                       (if task
-                                           (progn
-                                             (decf *free-threads*)
-                                             (return task))
-                                           (condition-wait *leader-notifier* *thread-pool-lock*)))))))))
+            (let ((*debugger-hook* (lambda (c old-hook)
+                                     (declare (ignore c old-hook))
+                                     (throw 'continue nil))))
+              (loop (with-lock-held (*thread-pool-lock*)
+                      (incf *free-threads*)
+                      (catch 'continue
+                        (funcall (loop (let ((task (pop *waiting-tasks*)))
+                                         (if task
+                                             (progn
+                                               (decf *free-threads*)
+                                               (return task))
+                                             (condition-wait *leader-notifier* *thread-pool-lock*))))))))))
        (with-lock-held (*thread-counter-lock*) (decf *total-threads*))))
    :name "Eager Future2 Worker")
   (with-lock-held (*thread-counter-lock*) (incf *total-threads*)))
