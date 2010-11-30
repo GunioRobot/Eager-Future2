@@ -35,7 +35,12 @@ If lazy, newly created futures are not computed until asked to yield their value
                           (with-lock-held ((lock (get-future)))
                             (setf (restart-notifier (get-future)) (make-condition-variable :name "Eager Future2 restart proxy CV")
                                   (error-descriptor (get-future)) (cons c (compute-restarts c)))
-                            (loop (condition-wait (restart-notifier (get-future)) (lock (get-future)))
+                            (loop (let ((wait-list (wait-list (get-future))))
+                                    (when wait-list
+                                      (let ((random-waiter (elt wait-list (random (length wait-list)))))
+                                        (with-lock-held ((car random-waiter))
+                                          (condition-notify (cdr random-waiter))))))
+                               (condition-wait (restart-notifier (get-future)) (lock (get-future)))
                                (let ((proxy-restart (proxy-restart (get-future))))
                                  (when proxy-restart
                                    (apply #'invoke-restart (car proxy-restart) (cdr proxy-restart)))))))))
