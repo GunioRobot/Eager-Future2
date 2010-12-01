@@ -69,21 +69,3 @@ The function is called in an unspecified dynamic environment."
     (unless (eq future-type :lazy)
       (schedule-future future future-type))
     future))
-
-(defmacro pexec (&body body)
-  "A shorthand for (pcall (lambda () ...))."
-  `(pcall (lambda () ,@body)))
-
-(defmacro plet ((&rest bindings) &body body)
-  "Like LET, but all bindings are evaluated asynchronously."
-  (let ((bindings (mapcar (lambda (x) (if (consp x) x (list x nil)))
-                          bindings)))
-    (let ((syms (mapcar (lambda (x) (gensym (string (car x))))
-                        bindings)))
-      `(let ,(loop for (nil exp) in bindings
-                for sym in syms
-                collect `(,sym (pexec ,exp)))
-         (symbol-macrolet ,(loop for (var nil) in bindings
-                              for sym in syms
-                              collect `(,var (yield ,sym)))
-           ,@body)))))

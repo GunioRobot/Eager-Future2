@@ -6,5 +6,6 @@
   :components ((:file "package")
                (:file "scheduler")
                (:file "make-future")
-               (:file "future"))
+               (:file "future")
+               (:file "library"))
   :depends-on (:bordeaux-threads :trivial-garbage))
