@@ -1,11 +1,11 @@
 (in-package #:eager-future2)
 
-(defvar *thread-pool-lock* (make-lock "Eager Future2 thread pool lock"))
+(defvar *task-queue-lock* (make-lock "Eager Future2 thread pool lock"))
 (defvar *leader-notifier* (make-condition-variable :name "Eager Future2 leader notifier"))
+(defvar *task-queue* ())
 (defvar *free-threads* 0)
-(defvar *waiting-tasks* ())
 
-(defvar *thread-counter-lock* (make-lock "Eager Future2 thread pool counter lock"))
+(defvar *thread-counter-lock* (make-lock "Eager Future2 thread pool total thread counter lock"))
 (defvar *total-threads* 0)
 
 (defun make-pool-thread ()
@@ -16,15 +16,14 @@
             (let ((*debugger-hook* (lambda (c old-hook)
                                      (declare (ignore c old-hook))
                                      (throw 'continue nil))))
-              (loop (with-lock-held (*thread-pool-lock*)
-                      (incf *free-threads*)
-                      (catch 'continue
-                        (funcall (loop (let ((task (pop *waiting-tasks*)))
+              (loop (catch 'continue
+                      (funcall (with-lock-held (*task-queue-lock*)
+                                 (incf *free-threads*)
+                                 (loop (let ((task (pop *task-queue*)))
                                          (if task
-                                             (progn
-                                               (decf *free-threads*)
-                                               (return task))
-                                             (condition-wait *leader-notifier* *thread-pool-lock*))))))))))
+                                             (progn (decf *free-threads*)
+                                                    (return task))
+                                             (condition-wait *leader-notifier* *task-queue-lock*))))))))))
        (with-lock-held (*thread-counter-lock*) (decf *total-threads*))))
    :name "Eager Future2 Worker")
   (with-lock-held (*thread-counter-lock*) (incf *total-threads*)))
@@ -37,23 +36,25 @@
   (with-lock-held (*thread-counter-lock*)
     (if (< *total-threads* new-size)
         (loop repeat (- new-size *total-threads*) do (make-pool-thread))
-        (with-lock-held (*thread-pool-lock*)
+        (with-lock-held (*task-queue-lock*)
           (loop repeat (- *total-threads* new-size) do
-               (push (lambda () (throw 'die nil)) *waiting-tasks*))))))
+               (push (lambda () (throw 'die nil)) *task-queue*)
+               (condition-notify *leader-notifier*))))))
 
 (eval-when (:load-toplevel)
   (advise-thread-pool-size 10))
 
 (defun schedule-last (task)
-  (with-lock-held (*thread-pool-lock*)
-    (setf *waiting-tasks* (append *waiting-tasks* (list task)))
-    (condition-notify *leader-notifier*))
+  (with-lock-held (*task-queue-lock*)
+    (setf *task-queue* (append *task-queue* (list task)))
+    (when (< 0 *free-threads*)
+      (condition-notify *leader-notifier*)))
   (values))
 
 (defun schedule-immediate (task)
-  (unless (with-lock-held (*thread-pool-lock*)
+  (unless (with-lock-held (*task-queue-lock*)
             (when (< 0 *free-threads*)
-              (setf *waiting-tasks* (push task *waiting-tasks*))
+              (setf *task-queue* (push task *task-queue*))
               (condition-notify *leader-notifier*)
               t))
     (make-thread task :name "Eager Future2 Temporary Worker"))
