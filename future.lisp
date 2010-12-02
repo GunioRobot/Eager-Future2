@@ -30,12 +30,12 @@ computation of the future)."
     (if (slot-boundp future 'values)
         (return-from force nil)
         (setf (%values future) values)))
-  (dolist (x (wait-list future))
-    (with-lock-held ((car x))
-      (condition-notify (cdr x))))
   (with-slots (computing-thread) future
     (unless (eq computing-thread (current-thread))
       (abort-scheduled-future-task computing-thread (future-id future)))
+    (dolist (x (wait-list future))
+      (with-lock-held ((car x))
+        (condition-notify (cdr x))))
     (setf computing-thread nil
           (wait-list future) nil
           (task future) nil
