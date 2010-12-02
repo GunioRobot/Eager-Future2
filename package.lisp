@@ -20,4 +20,10 @@
    ;; helper functions
    #:pexec
    #:plet
+   #:iterate-futures
+   #:force-all
+   #:pand
+   #:por
+   #:select-timeout
+   #:pfuncall
    ))
