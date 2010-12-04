@@ -19,11 +19,11 @@
               (loop (catch 'continue
                       (funcall (with-lock-held (*task-queue-lock*)
                                  (incf *free-threads*)
-                                 (loop (let ((task (pop *task-queue*)))
-                                         (if task
-                                             (progn (decf *free-threads*)
-                                                    (return task))
-                                             (condition-wait *leader-notifier* *task-queue-lock*))))))))))
+                                 (unwind-protect
+                                      (loop (if *task-queue*
+                                                (return (pop *task-queue*))
+                                                (condition-wait *leader-notifier* *task-queue-lock*)))
+                                   (decf *free-threads*))))))))
        (with-lock-held (*thread-counter-lock*) (decf *total-threads*))))
    :name "Eager Future2 Worker")
   (with-lock-held (*thread-counter-lock*) (incf *total-threads*)))
