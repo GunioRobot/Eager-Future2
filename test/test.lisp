@@ -16,15 +16,15 @@
         (sleep .01)
         (is (= 6 (yield task)))))
 
-;; crashes on CCL
-;; (test stress
-;;   (flet ((compute ()
-;;            (loop :for i :from 0 :below 100000
-;;                  :sum (* i i))))
-;;       (let ((tasks (loop repeat 100 collect (pcall #'compute)))
-;;             (answer (compute)))
-;;         (sleep .05)
-;;         (is (every (lambda (tsk) (= (yield tsk) answer)) tasks)))))
+;; crashes on CCL for large (~50-100) values of loop repeat
+(test stress
+  (flet ((compute ()
+           (loop :for i :from 0 :below 100000
+                 :sum (* i i))))
+      (let ((tasks (loop repeat 40 collect (pcall #'compute)))
+            (answer (compute)))
+        (sleep .05)
+        (is (every (lambda (tsk) (= (yield tsk) answer)) tasks)))))
 
 (test multi-yield
       (let* ((task (pexec (sleep .1) :ok))
@@ -92,6 +92,7 @@
              (yield (select-timeout 5 (pexec 4))))))
 
 (test thread-pool-size-advise
+  (trivial-garbage:gc :full t)
   (is (= 0
          (progn (advise-thread-pool-size 0)
                 (thread-pool-size))))
