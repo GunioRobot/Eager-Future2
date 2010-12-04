@@ -1,0 +1,13 @@
+* SBCL can't cancel computations of futures that are no longer
+  referenced and should be garbage-collectable (apparent reason: SBCL
+  keeps references to future object somewhere on the stack even when
+  using weak-pointer-value like in make-scheduler-task)
+
+* CCL crashes on consing-intensive parallel tasks (for example, values
+  >50 on stress test)
+
+* Some of the tests result in one thread pool thread somehow getting
+  stuck (check *free-threads* after running the test suite; also this
+  causes thread-pool-size-advise test to fail on subsequent test suite
+  invocations)
+
