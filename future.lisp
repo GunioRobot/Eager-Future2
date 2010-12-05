@@ -18,7 +18,7 @@
   (or (slot-boundp future 'values) (error-descriptor future)))
 
 (defun ready-to-yield? (future)
-  "Returns t if the future values have been computed, nil otherwise."
+  "Returns non-nil if the future values have been computed, nil otherwise."
   (with-lock-held ((lock future))
     (%ready-to-yield? future)))
 
@@ -64,7 +64,7 @@ computation of the future)."
          (condition-wait notifier select-lock)))))
 
 (defun yield (future)
-  "Returns the computed value of the future.
+  "Returns the computed values of the future.
 
 In case of a delayed future, computes the value of the future in the
 current thread.

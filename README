@@ -1,0 +1,128 @@
+Eager Future2 is a Common Lisp library that provides composable
+concurrency primitives that unify parallel and lazy evaluation, are
+integrated with CL's condition system, and have automatic resource
+management.
+
+The basic unit of concurrency in Eager Future2 is the future, which is
+a data type that acts as a proxy for the values of a no-argument
+function (thunk) that is computed concurrently.
+
+Eager Future2 provides several strategies for computing futures
+(specified as keywords): :lazy (only computed when the future is asked
+to yield its values), :speculative (may be computed when there is
+processing capacity available), and :eager (computation begins as
+soons as the future is created).
+
+A future is created by the pcall function, which takes a thunk to
+compute, and optionally the computing strategy. The default computing
+strategy is specified by *default-future-type*, which is :speculative
+by default.
+
+A future can be asked for its values with the yield function. The
+function ready-to-yield? is a non-blocking way to check whether the
+future is done computing. The function select takes a set of futures
+and blocks until at least one future is ready to yield, returning that
+future.
+
+Ongoing computation of a future can be aborted with the force
+function, which takes the future and desired yield values and attempts
+to install them in that future. If a future has already finished
+computing, calling force on it will have no effect.
+
+Error handling is done transparently (the same way as if the program
+wasn't written to use futures) by proxying unhandled conditions and
+available restarts across thread boundaries. An additional restart
+called force-values is also offered, which simply calls force on the
+future whose computation raised the error.
+
+If a future is no longer referenced and gets garbage collected, any
+ongoing computation associated with that future is aborted to release
+underlying thread resources. This permits speculative computation to
+be done without having to worry about manual resource management.
+
+API documentation:
+
+function pcall (thunk &optional (future-type *default-future-type*)) => future
+
+  Given a function of no arguments, returns an object (called a
+  future) that can later be used to retrieve the values computed by the
+  function.
+
+  future-type (by default the value of *default-future-type*) can either
+  be :eager, :speculative, or :lazy. See the documentation of
+  *default-future-type* for an explanation of the different future
+  types.
+
+  The function is called in an unspecified dynamic environment.
+
+function ready-to-yield? (future) => nil or non-nil
+
+  Returns non-nil if the future values have been computed, nil otherwise.
+
+function yield (future) => value*
+
+  Returns the computed values of the future.
+
+  In case of a delayed future, computes the value of the future in the
+  current thread.
+
+  In case of a speculative future, if no other thread is computing the
+  value of the future, computes the value in the current thread. If
+  another thread is currently computing the value of the future, blocks
+  until the value is available.
+
+  In case of an eager future, blocks until the value is available.
+
+function select (&rest futures) => future
+
+  Returns the first future that is ready to yield.
+
+function force (future &rest values) => nil
+
+  If the future has not yet yielded a value, installs the given
+  values as the yield-values of the future (stopping any ongoing
+  computation of the future).
+
+macro pexec (&body body) => future
+
+  A shorthand for (pcall (lambda () ...)).
+
+macro plet ((&rest bindings) &body body)
+
+  Like LET, but all bindings are evaluated asynchronously.
+
+function iterate-futures (proc futures) => nil
+
+  Calls proc on each future in select order. Proc is a procedure that
+  takes the currently yieldable future as its first argument, and the
+  list of futures not yet processed as its second. Futures need to be
+  yielded by proc - this is done so that proc can have control of error
+  handling. The second argument is useful to for example be able to
+  terminate remaining computations before a non-local control transfer.
+
+function force-all (futures &rest values) => nil
+
+  Calls force on all given future with values. Useful to stop
+  remaining computations in for example iterate-futures.
+
+macro pand (&rest exprs) => t or nil
+
+  Evaluates expressions in parallel. If any expression yields nil,
+  terminates all outstanding computations and returns nil. If all
+  expressions yield a non-nil value, returns t.
+
+macro por (&rest exprs) => nil or non-nil
+
+  Evaluates expressions in parallel. Returns the value of the first
+  expression that yields a non-nil value. If all expressions evaluate
+  to nil, returns nil.
+
+function select-timeout (timeout &rest futures) => future or nil
+
+  Given a timeout (in seconds) and a set of futures, returns either
+  nil if no futures are ready to yield when timeout seconds have
+  elapsed, or the first yieldable future otherwise.
+
+macro pfuncall (function &rest args) => result
+
+  Evaluates args in parallel before funcalling the given function on them.
