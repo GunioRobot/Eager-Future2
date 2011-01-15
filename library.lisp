@@ -76,3 +76,10 @@ elapsed, or the first yieldable future otherwise."
   (let ((syms (loop repeat (length args) collect (gensym))))
     `(plet ,(loop for s in syms for arg in args collect (list s arg))
        (funcall ,function ,@syms))))
+
+(defun touch (x)
+  "If x is a future, yields its value, otherwise returns x.
+Borrowed from MultiLisp."
+  (if (typep x 'future)
+      (yield x)
+      x))
