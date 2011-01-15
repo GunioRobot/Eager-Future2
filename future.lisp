@@ -75,6 +75,7 @@ another thread is currently computing the value of the future, blocks
 until the value is available.
 
 In case of an eager future, blocks until the value is available."
+  (assert (typep future 'future) () "~A is not a future" future)
   (tagbody (catch 'task-done
              (let ((*computing-future* (future-id future)))
                (with-lock-held ((lock future))

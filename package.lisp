@@ -2,6 +2,9 @@
   (:use #:cl #:bordeaux-threads #:trivial-garbage)
   (:export
 
+   ;; type
+   #:future
+
    ;; making futures
    #:*default-future-type*
    #:pcall
