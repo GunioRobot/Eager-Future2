@@ -22,7 +22,7 @@ If lazy, newly created futures are not computed until asked to yield their value
       (flet ((get-future () (or (weak-pointer-value future-ptr) (throw 'task-done nil))))
         (let ((*computing-future* (future-id (get-future))))
           (with-lock-held ((lock (get-future)))
-            (if (%ready-to-yield? (get-future))
+            (if (or (%ready-to-yield? (get-future)) (computing-thread (get-future)))
                 (throw 'task-done nil)
                 (setf (computing-thread (get-future)) (current-thread))))
           (finalize (get-future) (let ((thread (current-thread))

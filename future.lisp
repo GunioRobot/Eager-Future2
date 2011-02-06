@@ -53,7 +53,7 @@ computation of the future)."
           (with-lock-held ((lock future))
             (when (%ready-to-yield? future)
               (return-from select future))
-            (when (and (not any-computing?) (computing-thread future))
+            (when (computing-thread future)
               (setf any-computing? t))
             (push (cons select-lock notifier) (wait-list future))))
         (unless any-computing?
