@@ -5,7 +5,7 @@
 (defvar *task-queue* ())
 (defvar *free-threads* 0)
 
-(defvar *thread-counter-lock* (make-lock "Eager Future2 thread pool total thread counter lock"))
+(defvar *thread-counter-lock* (make-recursive-lock "Eager Future2 thread pool total thread counter lock"))
 (defvar *total-threads* 0)
 
 (defun make-pool-thread ()
@@ -24,16 +24,16 @@
                                                 (return (pop *task-queue*))
                                                 (condition-wait *leader-notifier* *task-queue-lock*)))
                                    (decf *free-threads*))))))))
-       (with-lock-held (*thread-counter-lock*) (decf *total-threads*))))
+       (with-recursive-lock-held (*thread-counter-lock*) (decf *total-threads*))))
    :name "Eager Future2 Worker")
-  (with-lock-held (*thread-counter-lock*) (incf *total-threads*)))
+  (with-recursive-lock-held (*thread-counter-lock*) (incf *total-threads*)))
 
 (defun thread-pool-size ()
-  (with-lock-held (*thread-counter-lock*)
+  (with-recursive-lock-held (*thread-counter-lock*)
     *total-threads*))
 
 (defun advise-thread-pool-size (new-size)
-  (with-lock-held (*thread-counter-lock*)
+  (with-recursive-lock-held (*thread-counter-lock*)
     (if (< *total-threads* new-size)
         (loop repeat (- new-size *total-threads*) do (make-pool-thread))
         (with-lock-held (*task-queue-lock*)
