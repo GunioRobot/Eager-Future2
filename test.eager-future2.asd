@@ -2,5 +2,6 @@
   :components ((:module :test
                         :serial t
                         :components ((:file "package")
-                                     (:file "test"))))
-  :depends-on (:eager-future2 :fiveam))
+                                     (:file "test")
+                                     (:file "benchmark"))))
+  :depends-on (:eager-future2 :eos))
