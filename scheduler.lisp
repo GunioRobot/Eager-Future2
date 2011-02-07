@@ -29,10 +29,14 @@
   (with-recursive-lock-held (*thread-counter-lock*) (incf *total-threads*)))
 
 (defun thread-pool-size ()
+  "Returns the current number of threads in the thread pool. This
+number determines the maximum amount of speculative futures that can
+be computed at the same time."
   (with-recursive-lock-held (*thread-counter-lock*)
     *total-threads*))
 
 (defun advise-thread-pool-size (new-size)
+  "Attempts to set the amount of threads in the thread pool to given value."
   (with-recursive-lock-held (*thread-counter-lock*)
     (if (< *total-threads* new-size)
         (loop repeat (- new-size *total-threads*) do (make-pool-thread))

@@ -85,7 +85,7 @@ function force (future &rest values) => nil
 
 macro pexec (&body body) => future
 
-  A shorthand for (pcall (lambda () ...)).
+  Shorthand for (pcall (lambda () ...))
 
 macro plet ((&rest bindings) &body body)
 
@@ -126,3 +126,7 @@ function select-timeout (timeout &rest futures) => future or nil
 macro pfuncall (function &rest args) => result
 
   Evaluates args in parallel before funcalling the given function on them.
+
+function touch (x) => value
+
+  If x is a future, yields its value, otherwise returns x.

@@ -1,7 +1,7 @@
 (in-package #:eager-future2)
 
 (defmacro pexec (&body body)
-  "A shorthand for (pcall (lambda () ...))."
+  "Shorthand for (pcall (lambda () ...))"
   `(pcall (lambda () ,@body)))
 
 (defmacro plet ((&rest bindings) &body body)
@@ -78,8 +78,7 @@ elapsed, or the first yieldable future otherwise."
        (funcall ,function ,@syms))))
 
 (defun touch (x)
-  "If x is a future, yields its value, otherwise returns x.
-Borrowed from MultiLisp."
+  "If x is a future, yields its value, otherwise returns x."
   (if (typep x 'future)
       (yield x)
       x))
